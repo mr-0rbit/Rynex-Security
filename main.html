@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Rynex Security — Coming Soon</title>
+
+<meta name="description" content="Rynex Security — Offensive Cyber Security Company Launching Soon">
+<meta name="robots" content="index, follow">
+
+<!-- Basic Security Headers -->
+
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="X-XSS-Protection" content="1; mode=block">
+
+<style>
+
+body{
+margin:0;
+background:#000;
+color:#00ffcc;
+font-family:Consolas, monospace;
+overflow:hidden;
+}
+
+canvas{
+position:fixed;
+top:0;
+left:0;
+z-index:-1;
+}
+
+.container{
+
+position:absolute;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+text-align:center;
+padding:20px;
+
+}
+
+.logo{
+
+font-size:56px;
+font-weight:bold;
+animation:glow 2s infinite alternate;
+
+}
+
+@keyframes glow{
+
+from{
+text-shadow:0 0 10px #00ffcc;
+}
+
+to{
+text-shadow:0 0 25px #00ffcc, 0 0 50px #00ffcc;
+}
+
+}
+
+#terminal{
+
+color:#ffffff;
+margin-top:20px;
+min-height:60px;
+font-size:18px;
+
+}
+
+.status{
+
+margin-top:20px;
+font-size:20px;
+
+}
+
+.contact{
+
+margin-top:25px;
+font-size:15px;
+color:#aaa;
+
+}
+
+a{
+
+color:#00ffcc;
+text-decoration:none;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div class="container">
+
+<div class="logo">Rynex Security</div>
+
+<div id="terminal"></div>
+
+<div class="status">
+
+[ SYSTEM STATUS: INITIALIZING ]
+
+</div>
+
+<div class="contact">
+
+Contact: <a href="mailto:info@rynexsecurity.com">[info@rynexsecurity.com]</a>
+
+</div>
+
+</div>
+
+<script>
+
+/* MATRIX RAIN EFFECT — SAFE VERSION */
+
+(function(){
+
+const canvas=document.getElementById("matrix");
+const ctx=canvas.getContext("2d");
+
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+const letters="01";
+const fontSize=14;
+
+const columns=Math.floor(canvas.width/fontSize);
+
+const drops=[];
+
+for(let i=0;i<columns;i++){
+
+drops[i]=1;
+
+}
+
+function draw(){
+
+ctx.fillStyle="rgba(0,0,0,0.05)";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="#00ffcc";
+ctx.font=fontSize+"px monospace";
+
+for(let i=0;i<drops.length;i++){
+
+const text=letters.charAt(Math.floor(Math.random()*letters.length));
+
+ctx.fillText(text,i*fontSize,drops[i]*fontSize);
+
+if(drops[i]*fontSize>canvas.height && Math.random()>0.975){
+
+drops[i]=0;
+
+}
+
+drops[i]++;
+
+}
+
+}
+
+setInterval(draw,33);
+
+})();
+
+
+
+/* TERMINAL EFFECT — SAFE VERSION */
+
+(function(){
+
+const lines=[
+
+"Initializing Rynex Security...",
+"Loading security modules...",
+"Establishing secure interface...",
+"Starting services...",
+"System ready."
+
+];
+
+let line=0;
+let char=0;
+
+const terminal=document.getElementById("terminal");
+
+function type(){
+
+if(line<lines.length){
+
+if(char<lines[line].length){
+
+terminal.innerHTML+=lines[line].charAt(char);
+
+char++;
+
+setTimeout(type,40);
+
+}
+
+else{
+
+terminal.innerHTML+="<br>";
+
+line++;
+
+char=0;
+
+setTimeout(type,400);
+
+}
+
+}
+
+}
+
+type();
+
+})();
+
+</script>
+
+</body>
+
+</html>
