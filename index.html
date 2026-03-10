@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <title>RYNEX SECURITY — Elite Cyber Intelligence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan: #00d4ff;
+      --cyan-dim: rgba(0,212,255,0.1);
+      --cyan-glow: rgba(0,212,255,0.25);
+      --blue: #0057ff;
+      --blue-dim: rgba(0,87,255,0.12);
+      --bg: #020509;
+      --surface: #060d14;
+      --surface2: #08111a;
+      --border: rgba(0,212,255,0.14);
+      --border-dim: rgba(0,212,255,0.06);
+      --text: #cde8f0;
+      --muted: #2e4e62;
+      --error: #ff3c5a;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      font-family: 'Rajdhani', sans-serif;
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* Scanlines */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px);
+      pointer-events: none; z-index: 999;
+    }
+
+    /* Moving grid */
+    .bg-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 52px 52px;
+      animation: gridDrift 24s linear infinite;
+      pointer-events: none; z-index: 0;
+    }
+    @keyframes gridDrift { 0%{background-position:0 0} 100%{background-position:52px 52px} }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 52px; height: 70px;
+      background: rgba(2,5,9,0.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-dim);
+    }
+
+    .nav-logo { display:flex; align-items:center; gap:14px; text-decoration:none; cursor:pointer; }
+
+    .nav-logo-hex { width:38px; height:38px; }
+    .nav-logo-hex svg { width:100%; height:100%; }
+
+    .nav-brand { font-size:16px; font-weight:700; letter-spacing:0.25em; text-transform:uppercase; color:var(--text); }
+    .nav-brand em { color:var(--cyan); font-style:normal; }
+
+    .nav-links { display:flex; gap:40px; list-style:none; }
+    .nav-links a { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:0.25em; text-transform:uppercase; color:var(--muted); text-decoration:none; transition:0.2s; position:relative; }
+    .nav-links a::after { content:''; position:absolute; bottom:-4px; left:0; right:0; height:1px; background:var(--cyan); transform:scaleX(0); transition:0.3s; }
+    .nav-links a:hover { color:var(--cyan); }
+    .nav-links a:hover::after { transform:scaleX(1); }
+
+    .nav-right { display:flex; align-items:center; gap:14px; }
+    #userEmail { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.1em; }
+
+    .btn-logout { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:0.2em; text-transform:uppercase; color:var(--error); background:none; border:1px solid rgba(255,60,90,0.3); padding:8px 16px; cursor:pointer; transition:0.2s; }
+    .btn-logout:hover { background:var(--error); color:white; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
+      padding: 120px 80px 80px;
+      position: relative; overflow: hidden; z-index: 10;
+    }
+
+    .hero-orb {
+      position: absolute; width: 900px; height: 900px;
+      background: radial-gradient(circle, rgba(0,87,255,0.1) 0%, rgba(0,212,255,0.04) 40%, transparent 70%);
+      top: 50%; right: -300px; transform: translateY(-50%);
+      pointer-events: none; animation: heroOrb 8s ease-in-out infinite alternate;
+    }
+    @keyframes heroOrb { 0%{transform:translateY(-50%) scale(1)} 100%{transform:translateY(-55%) scale(1.08)} }
+
+    /* Diagonal accent line */
+    .hero-line {
+      position: absolute;
+      top: 0; right: 200px; bottom: 0;
+      width: 1px;
+      background: linear-gradient(180deg, transparent, var(--border), transparent);
+      pointer-events: none;
+    }
+
+    .hero-eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px; letter-spacing: 0.5em; text-transform: uppercase;
+      color: var(--cyan); margin-bottom: 28px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .hero-eyebrow::before { content:''; width:32px; height:1px; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+
+    .hero-title {
+      font-size: clamp(58px, 9vw, 120px);
+      font-weight: 700; line-height: 0.88;
+      letter-spacing: -0.01em; text-transform: uppercase; margin-bottom: 36px;
+    }
+    .hero-title .t1 { color: var(--text); }
+    .hero-title .t2 { color: var(--cyan); text-shadow: 0 0 40px rgba(0,212,255,0.4); }
+    .hero-title .t3 { color: var(--muted); font-size: 0.4em; letter-spacing: 0.1em; font-weight: 500; display: block; margin-top: 12px; }
+
+    .hero-desc { max-width: 520px; color: var(--muted); font-size: 16px; line-height: 1.7; margin-bottom: 44px; }
+
+    .hero-ctas { display:flex; gap:16px; flex-wrap:wrap; }
+
+    .btn-primary {
+      background: var(--cyan); color: #020509;
+      font-family: 'Rajdhani', sans-serif; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.3em; text-transform: uppercase;
+      padding: 15px 36px; text-decoration: none; transition: 0.25s;
+      position: relative; overflow: hidden; display: inline-block;
+      box-shadow: 0 0 30px rgba(0,212,255,0.2);
+    }
+    .btn-primary::before { content:''; position:absolute; inset:0; background:rgba(255,255,255,0.15); transform:scaleX(0); transform-origin:left; transition:0.4s; }
+    .btn-primary:hover::before { transform:scaleX(1); }
+    .btn-primary:hover { box-shadow:0 0 50px rgba(0,212,255,0.4); }
+
+    .btn-outline {
+      background: transparent; color: var(--text);
+      font-family: 'Share Tech Mono', monospace; font-size: 10px;
+      letter-spacing: 0.3em; text-transform: uppercase;
+      padding: 15px 36px; border: 1px solid var(--border);
+      text-decoration: none; transition: 0.2s; display: inline-block;
+    }
+    .btn-outline:hover { border-color: var(--cyan); color: var(--cyan); }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      position: relative; z-index: 10;
+      display: grid; grid-template-columns: repeat(4,1fr);
+      background: var(--surface);
+      border-top: 1px solid var(--border-dim); border-bottom: 1px solid var(--border-dim);
+    }
+    .stat-item { padding: 36px 48px; border-right: 1px solid var(--border-dim); }
+    .stat-item:last-child { border-right: none; }
+    .stat-num { font-size: 44px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 20px rgba(0,212,255,0.35); line-height: 1; margin-bottom: 8px; }
+    .stat-label { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+
+    /* ── SECTIONS ── */
+    section { position: relative; z-index: 10; }
+    .section-pad { padding: 120px 80px; }
+
+    .eyebrow { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:0.5em; text-transform:uppercase; color:var(--cyan); margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+    .eyebrow::before { content:''; width:20px; height:1px; background:var(--cyan); }
+
+    .section-title { font-size: clamp(32px,4vw,52px); font-weight:700; text-transform:uppercase; letter-spacing:-0.01em; line-height:1; }
+    .section-title em { color:var(--cyan); font-style:normal; text-shadow:0 0 20px rgba(0,212,255,0.3); }
+
+    /* ── SERVICES ── */
+    .services-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:2px; background:rgba(0,212,255,0.05); margin-top:60px; }
+
+    .service-card {
+      background: var(--surface); padding: 44px 36px;
+      position: relative; overflow: hidden; transition: 0.35s;
+    }
+    .service-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,var(--blue),var(--cyan)); transform:scaleX(0); transform-origin:left; transition:0.4s; }
+    .service-card:hover { background:var(--surface2); transform:translateY(-3px); box-shadow:0 20px 60px rgba(0,212,255,0.08); }
+    .service-card:hover::before { transform:scaleX(1); }
+
+    .svc-num { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.3em; margin-bottom:20px; }
+    .svc-icon { font-size:28px; margin-bottom:16px; display:block; filter:drop-shadow(0 0 8px rgba(0,212,255,0.4)); }
+    .svc-name { font-size:17px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:14px; line-height:1.2; color:var(--text); }
+    .svc-desc { font-size:13px; color:var(--muted); line-height:1.7; margin-bottom:24px; }
+    .svc-tags { display:flex; flex-wrap:wrap; gap:6px; }
+    .tag { font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:0.15em; text-transform:uppercase; padding:4px 10px; border:1px solid var(--border); color:var(--cyan); }
+
+    /* ── WHY US ── */
+    .why-grid { display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:center; }
+    .why-list { display:flex; flex-direction:column; gap:28px; }
+    .why-item { display:flex; gap:20px; align-items:flex-start; }
+    .why-num { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--cyan); letter-spacing:0.2em; min-width:24px; padding-top:3px; }
+    .why-content h3 { font-size:15px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+    .why-content p { font-size:13px; color:var(--muted); line-height:1.7; }
+
+    /* Threat panel */
+    .threat-panel { background:var(--surface); border:1px solid var(--border); padding:36px; position:relative; }
+    .threat-panel::before { content:''; position:absolute; top:-1px; left:10%; right:10%; height:1px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); }
+
+    .tp-header { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:0.3em; color:var(--muted); text-transform:uppercase; margin-bottom:24px; display:flex; align-items:center; gap:10px; }
+    .blink-dot { display:inline-block; width:5px; height:5px; background:var(--cyan); border-radius:50%; animation:blink 2s infinite; box-shadow:0 0 6px var(--cyan); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .threat-list { display:flex; flex-direction:column; gap:8px; }
+    .threat-row { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; background:rgba(0,212,255,0.02); border-left:2px solid transparent; transition:0.25s; font-family:'Share Tech Mono',monospace; font-size:10px; }
+    .threat-row:hover { border-left-color:var(--cyan); background:rgba(0,212,255,0.05); }
+    .t-name { color:var(--text); }
+    .t-lvl { font-size:8px; letter-spacing:0.2em; padding:3px 8px; }
+    .lvl-critical { background:rgba(255,60,90,0.12); color:#ff3c5a; }
+    .lvl-high { background:rgba(255,119,0,0.12); color:#ff7700; }
+    .lvl-med { background:rgba(0,212,255,0.1); color:var(--cyan); }
+    .t-status { color:var(--cyan); font-size:8px; letter-spacing:0.15em; }
+
+    /* ── PROCESS ── */
+    .process-track { display:grid; grid-template-columns:repeat(5,1fr); position:relative; margin-top:60px; }
+    .process-track::before { content:''; position:absolute; top:39px; left:9%; right:9%; height:1px; background:linear-gradient(90deg,transparent,var(--border),var(--cyan),var(--border),transparent); }
+
+    .p-step { padding:0 20px; text-align:center; }
+    .p-num { width:80px; height:80px; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; margin:0 auto 22px; font-family:'Share Tech Mono',monospace; font-size:18px; color:var(--cyan); background:var(--bg); position:relative; z-index:1; transition:0.3s; }
+    .p-step:hover .p-num { background:var(--cyan); color:var(--bg); box-shadow:0 0 30px rgba(0,212,255,0.35); }
+    .p-name { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px; }
+    .p-desc { font-size:11px; color:var(--muted); line-height:1.6; }
+
+    /* ── CONTACT ── */
+    .contact-grid { display:grid; grid-template-columns:1fr 1.6fr; gap:80px; }
+
+    .contact-info h2 { font-size:42px; font-weight:700; text-transform:uppercase; line-height:1; margin-bottom:20px; }
+    .contact-info h2 em { color:var(--cyan); font-style:normal; text-shadow:0 0 20px rgba(0,212,255,0.3); }
+    .contact-info p { color:var(--muted); font-size:14px; line-height:1.7; margin-bottom:36px; }
+
+    .contact-details { display:flex; flex-direction:column; gap:14px; }
+    .c-row { display:flex; gap:14px; align-items:center; font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--muted); }
+    .c-row span:first-child { color:var(--cyan); width:18px; text-align:center; }
+
+    .contact-form { background:var(--surface); border:1px solid var(--border); padding:44px; position:relative; }
+    .contact-form::before { content:''; position:absolute; top:-1px; left:15%; right:15%; height:1px; background:linear-gradient(90deg,transparent,var(--cyan),transparent); }
+
+    .form-title { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:0.4em; text-transform:uppercase; color:var(--muted); margin-bottom:32px; display:flex; align-items:center; gap:10px; }
+
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .cf { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+    .cf label { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--cyan); letter-spacing:0.25em; text-transform:uppercase; }
+    .cf input,.cf select,.cf textarea { background:rgba(0,212,255,0.03); border:1px solid rgba(0,212,255,0.1); color:var(--text); font-family:'Share Tech Mono',monospace; font-size:12px; padding:12px 14px; outline:none; transition:0.25s; width:100%; }
+    .cf select option { background:var(--bg); }
+    .cf input:focus,.cf select:focus,.cf textarea:focus { border-color:var(--cyan); background:rgba(0,212,255,0.04); box-shadow:0 0 12px rgba(0,212,255,0.06); }
+    .cf input.invalid,.cf select.invalid,.cf textarea.invalid { border-color:var(--error); }
+    .cf textarea { resize:vertical; min-height:110px; }
+    .cf input::placeholder,.cf textarea::placeholder { color:var(--muted); }
+    .cf-error { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--error); min-height:12px; letter-spacing:0.1em; }
+
+    .form-alert { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:0.1em; padding:11px 14px; border-left:2px solid; display:none; margin-bottom:14px; }
+    .form-alert.error { border-color:var(--error); color:var(--error); background:rgba(255,60,90,0.05); }
+    .form-alert.success { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.04); }
+    .form-alert.show { display:block; }
+
+    .hp-field { position:absolute; left:-9999px; top:-9999px; visibility:hidden; }
+
+    /* ── FOOTER ── */
+    footer { position:relative; z-index:10; border-top:1px solid var(--border-dim); padding:36px 80px; display:flex; justify-content:space-between; align-items:center; }
+    .footer-brand { font-size:15px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; }
+    .footer-brand em { color:var(--cyan); font-style:normal; }
+    .footer-copy { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:0.2em; text-align:center; }
+    .footer-status { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--muted); letter-spacing:0.15em; display:flex; align-items:center; gap:8px; }
+
+    /* ── REVEAL ── */
+    .reveal { opacity:0; transform:translateY(22px); transition:opacity 0.65s ease, transform 0.65s ease; }
+    .reveal.visible { opacity:1; transform:translateY(0); }
+
+    @media(max-width:900px){
+      nav{padding:0 20px;}
+      .nav-links{display:none;}
+      .hero{padding:120px 28px 60px;}
+      .stats-strip{grid-template-columns:repeat(2,1fr);}
+      .section-pad{padding:80px 28px;}
+      .services-grid{grid-template-columns:1fr;}
+      .why-grid{grid-template-columns:1fr;gap:40px;}
+      .process-track{grid-template-columns:repeat(2,1fr);gap:36px;}
+      .process-track::before{display:none;}
+      .contact-grid{grid-template-columns:1fr;}
+      footer{flex-direction:column;gap:14px;text-align:center;padding:28px;}
+      .form-row{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+
+  <nav>
+    <a class="nav-logo" href="#hero">
+      <div class="nav-logo-hex">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="20,2 38,11 38,29 20,38 2,29 2,11" stroke="#00d4ff" stroke-width="1.2" fill="rgba(0,212,255,0.06)"/>
+          <text x="20" y="25" text-anchor="middle" fill="#00d4ff" font-family="Rajdhani,sans-serif" font-size="14" font-weight="700">R</text>
+        </svg>
+      </div>
+      <span class="nav-brand">RYNEX<em>SEC</em></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#services">Services</a></li>
+      <li><a href="#why">Why Us</a></li>
+      <li><a href="#process">Process</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="nav-right">
+      <span id="userEmail"></span>
+      <button class="btn-logout" onclick="handleLogout()">Terminate Session</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero" class="hero">
+    <div class="hero-orb"></div>
+    <div class="hero-line"></div>
+    <div class="hero-eyebrow">Elite Cyber Intelligence</div>
+    <h1 class="hero-title">
+      <span class="t1 block">RYNEX</span>
+      <span class="t2 block">SECURITY</span>
+      <span class="t3">Threat Neutralization Division</span>
+    </h1>
+    <p class="hero-desc">Engineered for the age of cyber-warfare. We deploy autonomous defense systems and elite human intelligence to neutralize threats before they materialize — securing the world's most sensitive infrastructure.</p>
+    <div class="hero-ctas">
+      <a href="#contact" class="btn-primary">Request Assessment</a>
+      <a href="#services" class="btn-outline">View Capabilities</a>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <div class="stats-strip">
+    <div class="stat-item reveal"><div class="stat-num">256+</div><div class="stat-label">Critical Breaches Prevented</div></div>
+    <div class="stat-item reveal" style="transition-delay:.1s"><div class="stat-num">99.8%</div><div class="stat-label">Threat Detection Rate</div></div>
+    <div class="stat-item reveal" style="transition-delay:.2s"><div class="stat-num">24/7</div><div class="stat-label">SOC Monitoring Coverage</div></div>
+    <div class="stat-item reveal" style="transition-delay:.3s"><div class="stat-num">14min</div><div class="stat-label">Avg. Incident Response</div></div>
+  </div>
+
+  <!-- SERVICES -->
+  <section id="services" class="section-pad">
+    <div class="reveal"><div class="eyebrow">Core Capabilities</div><h2 class="section-title">Our <em>Specializations</em></h2></div>
+    <div class="services-grid">
+      <div class="service-card reveal"><div class="svc-num">01</div><span class="svc-icon">🔬</span><h3 class="svc-name">VAPT Assessment</h3><p class="svc-desc">Full-spectrum Vulnerability Assessment & Penetration Testing across networks, web apps, APIs, and mobile. We find what others miss.</p><div class="svc-tags"><span class="tag">Network</span><span class="tag">Web App</span><span class="tag">API</span><span class="tag">Mobile</span></div></div>
+      <div class="service-card reveal" style="transition-delay:.05s"><div class="svc-num">02</div><span class="svc-icon">🛡️</span><h3 class="svc-name">Security Operations Center</h3><p class="svc-desc">24/7 SOC-as-a-Service with elite analysts monitoring your environment in real-time. Rapid detection, triage, and response to live threats.</p><div class="svc-tags"><span class="tag">24/7</span><span class="tag">SIEM</span><span class="tag">EDR</span></div></div>
+      <div class="service-card reveal" style="transition-delay:.1s"><div class="svc-num">03</div><span class="svc-icon">📋</span><h3 class="svc-name">Security Audit</h3><p class="svc-desc">Comprehensive audits against ISO 27001, NIST, PCI-DSS, and HIPAA. Detailed gap analysis with a full remediation roadmap.</p><div class="svc-tags"><span class="tag">ISO 27001</span><span class="tag">NIST</span><span class="tag">PCI-DSS</span></div></div>
+      <div class="service-card reveal" style="transition-delay:.15s"><div class="svc-num">04</div><span class="svc-icon">🎯</span><h3 class="svc-name">Threat Hunting</h3><p class="svc-desc">Proactive, human-led threat hunting beyond automated detection. Our analysts pursue adversaries already inside your network.</p><div class="svc-tags"><span class="tag">APT</span><span class="tag">IOC</span><span class="tag">MITRE ATT&CK</span></div></div>
+      <div class="service-card reveal" style="transition-delay:.2s"><div class="svc-num">05</div><span class="svc-icon">🦠</span><h3 class="svc-name">Malware Analysis</h3><p class="svc-desc">Static and dynamic analysis of malicious artifacts. Reverse engineering, behavioral profiling, and attribution in our isolated sandbox.</p><div class="svc-tags"><span class="tag">Reverse Eng.</span><span class="tag">Sandbox</span><span class="tag">Attribution</span></div></div>
+      <div class="service-card reveal" style="transition-delay:.25s"><div class="svc-num">06</div><span class="svc-icon">🚨</span><h3 class="svc-name">Incident Response</h3><p class="svc-desc">Rapid-response IR teams deployed within hours of a breach. Containment, eradication, forensics, and post-incident reporting.</p><div class="svc-tags"><span class="tag">Forensics</span><span class="tag">Containment</span><span class="tag">Recovery</span></div></div>
+    </div>
+  </section>
+
+  <!-- WHY US -->
+  <section id="why" style="background:var(--surface)">
+    <div class="section-pad">
+      <div class="why-grid">
+        <div>
+          <div class="reveal"><div class="eyebrow">Why Rynex</div><h2 class="section-title" style="margin-bottom:44px">Built for<br><em>Adversaries</em></h2></div>
+          <div class="why-list">
+            <div class="why-item reveal"><div class="why-num">01</div><div class="why-content"><h3>Zero-Trust Architecture</h3><p>Every entity is a potential threat. We design systems that assume breach and limit blast radius through strict access segmentation.</p></div></div>
+            <div class="why-item reveal" style="transition-delay:.1s"><div class="why-num">02</div><div class="why-content"><h3>Offensive Mindset</h3><p>Our analysts think like attackers. We exploit before adversaries do — closing vulnerabilities before they're weaponized.</p></div></div>
+            <div class="why-item reveal" style="transition-delay:.2s"><div class="why-num">03</div><div class="why-content"><h3>Intelligence-Led Ops</h3><p>Threat intelligence from global honeynets, dark web monitoring, and ISAC partnerships informs every engagement.</p></div></div>
+            <div class="why-item reveal" style="transition-delay:.3s"><div class="why-num">04</div><div class="why-content"><h3>Certified Elite Team</h3><p>OSCP, CEH, CISSP, GREM and CISM certified professionals with backgrounds in military and intelligence environments.</p></div></div>
+          </div>
+        </div>
+        <div class="threat-panel reveal" style="transition-delay:.15s">
+          <div class="tp-header"><div class="blink-dot"></div>Live Threat Intelligence Feed</div>
+          <div class="threat-list" id="threatFeed">
+            <div class="threat-row"><span class="t-name">CVE-2025-3214 · RCE Apache</span><span class="t-lvl lvl-critical">CRITICAL</span><span class="t-status">PATCHED</span></div>
+            <div class="threat-row"><span class="t-name">Ransomware C2 · AS45670</span><span class="t-lvl lvl-high">HIGH</span><span class="t-status">BLOCKED</span></div>
+            <div class="threat-row"><span class="t-name">SQL Injection · 91.x.x.x</span><span class="t-lvl lvl-med">MED</span><span class="t-status">MITIGATED</span></div>
+            <div class="threat-row"><span class="t-name">Phishing Kit · corp-login[.]ru</span><span class="t-lvl lvl-high">HIGH</span><span class="t-status">TAKEDOWN</span></div>
+            <div class="threat-row"><span class="t-name">Lateral Movement · VLAN-04</span><span class="t-lvl lvl-critical">CRITICAL</span><span class="t-status">ISOLATED</span></div>
+            <div class="threat-row"><span class="t-name">Zero-Day · Kernel priv-esc</span><span class="t-lvl lvl-critical">CRITICAL</span><span class="t-status">ANALYZING</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROCESS -->
+  <section id="process" class="section-pad">
+    <div class="reveal" style="text-align:center;margin-bottom:0"><div class="eyebrow" style="justify-content:center">Engagement Model</div><h2 class="section-title">Our <em>Process</em></h2></div>
+    <div class="process-track">
+      <div class="p-step reveal"><div class="p-num">01</div><h3 class="p-name">Scoping</h3><p class="p-desc">Define boundaries, assets, threat model, and engagement rules with your team.</p></div>
+      <div class="p-step reveal" style="transition-delay:.08s"><div class="p-num">02</div><h3 class="p-name">Recon</h3><p class="p-desc">Passive & active intelligence gathering — OSINT, fingerprinting, attack surface mapping.</p></div>
+      <div class="p-step reveal" style="transition-delay:.16s"><div class="p-num">03</div><h3 class="p-name">Exploitation</h3><p class="p-desc">Controlled exploitation of vulnerabilities. Evidence captured, zero damage done.</p></div>
+      <div class="p-step reveal" style="transition-delay:.24s"><div class="p-num">04</div><h3 class="p-name">Analysis</h3><p class="p-desc">Root cause analysis, impact scoring, and remediation priority mapping.</p></div>
+      <div class="p-step reveal" style="transition-delay:.32s"><div class="p-num">05</div><h3 class="p-name">Report</h3><p class="p-desc">Executive & technical reports delivered. Debrief and remediation support included.</p></div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" style="background:var(--surface)">
+    <div class="section-pad">
+      <div class="contact-grid">
+        <div class="contact-info reveal">
+          <div class="eyebrow">Get In Touch</div>
+          <h2>Start Your<br><em>Assessment</em></h2>
+          <p>Ready to harden your defenses? Tell us about your environment and we'll craft a tailored security engagement. Confidentiality guaranteed under NDA.</p>
+          <div class="contact-details">
+            <div class="c-row"><span>✉</span><span>info@rynexsecurity.com</span></div>
+            <div class="c-row"><span>☎</span><span>+92 327 2873812</span></div>
+            <div class="c-row"><span>⚑</span><span>All communications are end-to-end encrypted</span></div>
+          </div>
+        </div>
+        <div class="contact-form reveal" style="transition-delay:.1s">
+          <div class="form-title"><div class="blink-dot"></div>Secure Contact Terminal</div>
+          <div class="form-alert" id="contactAlert"></div>
+          <form id="contactForm" novalidate autocomplete="off" onsubmit="handleContact(event)">
+            <input class="hp-field" type="text" name="website" tabindex="-1" autocomplete="off">
+            <div class="form-row">
+              <div class="cf"><label>Full Name</label><input type="text" id="cName" placeholder="John Smith" maxlength="100"><div class="cf-error" id="cNameErr"></div></div>
+              <div class="cf"><label>Email</label><input type="email" id="cEmail" placeholder="ciso@corp.com" maxlength="254"><div class="cf-error" id="cEmailErr"></div></div>
+            </div>
+            <div class="form-row">
+              <div class="cf"><label>Company</label><input type="text" id="cCompany" placeholder="Acme Corp" maxlength="100"><div class="cf-error" id="cCompanyErr"></div></div>
+              <div class="cf"><label>Service Required</label>
+                <select id="cService">
+                  <option value="">Select service...</option>
+                  <option>VAPT Assessment</option><option>SOC as a Service</option>
+                  <option>Security Audit</option><option>Threat Hunting</option>
+                  <option>Malware Analysis</option><option>Incident Response</option>
+                  <option>Other / Consultation</option>
+                </select>
+                <div class="cf-error" id="cServiceErr"></div>
+              </div>
+            </div>
+            <div class="cf"><label>Message</label><textarea id="cMsg" placeholder="Describe your environment and security concerns..." maxlength="2000"></textarea><div class="cf-error" id="cMsgErr"></div></div>
+            <button type="submit" class="btn-primary" id="contactBtn" style="width:100%;border:none;cursor:pointer">Initialize Handshake</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-brand">RYNEX<em>SEC</em></div>
+    <div class="footer-copy">© 2026 RYNEX SECURITY · ALL RIGHTS RESERVED · UNAUTHORIZED ACCESS WILL BE PROSECUTED</div>
+    <div class="footer-status"><div class="blink-dot"></div><span id="footerClock"></span></div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL='YOUR_SUPABASE_URL', SUPABASE_KEY='YOUR_SUPABASE_ANON_KEY';
+    let _sup=null;
+    try{if(typeof supabase!=='undefined'&&SUPABASE_URL!=='YOUR_SUPABASE_URL')_sup=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);}catch(e){}
+
+    function escapeHtml(s){const d=document.createElement('div');d.appendChild(document.createTextNode(String(s)));return d.innerHTML;}
+    function sanitize(s){return String(s).replace(/<[^>]*>/g,'').trim();}
+    function isValidEmail(e){return /^[^\s@<>'"]{1,64}@[^\s@<>'"]{1,255}\.[a-zA-Z]{2,}$/.test(e);}
+    function isValidName(n){return /^[a-zA-Z\s\-'.]{2,100}$/.test(n);}
+
+    async function checkSession(){
+      if(!_sup)return;
+      const{data:{session}}=await _sup.auth.getSession();
+      if(!session){window.location.href='auth.html';return;}
+      document.getElementById('userEmail').textContent=escapeHtml(session.user?.email||'');
+    }
+    checkSession();
+
+    async function handleLogout(){
+      if(_sup)await _sup.auth.signOut();
+      window.location.href='auth.html';
+    }
+
+    async function handleContact(e){
+      e.preventDefault();
+      if(e.target.querySelector('.hp-field').value)return;
+      ['cName','cEmail','cCompany','cService','cMsg'].forEach(id=>{
+        const err=document.getElementById(id+'Err');if(err)err.textContent='';
+        const el=document.getElementById(id);if(el)el.classList.remove('invalid');
+      });
+      const al=document.getElementById('contactAlert');al.className='form-alert';
+
+      const name=sanitize(document.getElementById('cName').value);
+      const email=sanitize(document.getElementById('cEmail').value);
+      const company=sanitize(document.getElementById('cCompany').value);
+      const service=sanitize(document.getElementById('cService').value);
+      const msg=sanitize(document.getElementById('cMsg').value);
+      let ok=true;
+
+      if(!name||!isValidName(name)){document.getElementById('cNameErr').textContent='⚠ Valid name required';document.getElementById('cName').classList.add('invalid');ok=false;}
+      if(!email||!isValidEmail(email)){document.getElementById('cEmailErr').textContent='⚠ Valid email required';document.getElementById('cEmail').classList.add('invalid');ok=false;}
+      if(!company||company.length<2){document.getElementById('cCompanyErr').textContent='⚠ Company required';document.getElementById('cCompany').classList.add('invalid');ok=false;}
+      if(!service){document.getElementById('cServiceErr').textContent='⚠ Select a service';document.getElementById('cService').classList.add('invalid');ok=false;}
+      if(!msg||msg.length<20){document.getElementById('cMsgErr').textContent='⚠ Min. 20 characters';document.getElementById('cMsg').classList.add('invalid');ok=false;}
+      if(!ok)return;
+
+      const btn=document.getElementById('contactBtn');
+      btn.disabled=true;btn.textContent='Transmitting...';
+      await new Promise(r=>setTimeout(r,1200));
+      al.textContent='✔ Message received. An analyst will contact you within 24 hours.';
+      al.className='form-alert success show';
+      document.getElementById('contactForm').reset();
+      btn.disabled=false;btn.textContent='Initialize Handshake';
+    }
+
+    // Scroll reveal
+    const ro=new IntersectionObserver(entries=>{
+      entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');ro.unobserve(e.target);}});
+    },{threshold:0.1});
+    document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+
+    // Clock
+    function tick(){const t=new Date().toISOString().slice(0,19).replace('T',' ');const el=document.getElementById('footerClock');if(el)el.textContent=t+' UTC';}
+    tick();setInterval(tick,1000);
+
+    // Animated threat feed
+    const threats=[
+      ['CVE-2025-3214 · RCE Apache','lvl-critical','CRITICAL','PATCHED'],
+      ['Ransomware C2 · AS45670','lvl-high','HIGH','BLOCKED'],
+      ['SQL Injection · 91.x.x.x','lvl-med','MED','MITIGATED'],
+      ['Phishing Kit · corp-login[.]ru','lvl-high','HIGH','TAKEDOWN'],
+      ['Lateral Movement · VLAN-04','lvl-critical','CRITICAL','ISOLATED'],
+      ['Zero-Day · Kernel priv-esc','lvl-critical','CRITICAL','ANALYZING'],
+      ['BruteForce SSH · 45.x.x.x','lvl-med','MED','BLOCKED'],
+      ['Supply Chain · npm pkg','lvl-high','HIGH','QUARANTINE'],
+    ];
+    let tIdx=0;
+    document.querySelectorAll('.threat-row').forEach(r=>{r.style.transition='opacity 0.4s,transform 0.4s,border-left 0.2s,background 0.2s';});
+    setInterval(()=>{
+      const feed=document.getElementById('threatFeed');if(!feed)return;
+      const rows=feed.querySelectorAll('.threat-row');
+      tIdx=(tIdx+1)%threats.length;
+      const t=threats[tIdx],old=rows[0];
+      old.style.opacity='0';old.style.transform='translateX(-16px)';
+      setTimeout(()=>{
+        old.querySelector('.t-name').textContent=escapeHtml(t[0]);
+        old.querySelector('.t-lvl').className='t-lvl '+t[1];
+        old.querySelector('.t-lvl').textContent=t[2];
+        old.querySelector('.t-status').textContent=escapeHtml(t[3]);
+        feed.appendChild(old);old.style.opacity='1';old.style.transform='';
+      },400);
+    },2800);
+  </script>
+</body>
+</html>
