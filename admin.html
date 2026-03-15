@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rynex Security — Admin Panel</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --cyan: #00f2ff; --red: #ff4d6d; --green: #00ff88; --yellow: #fbbf24; --bg: #030406; --sidebar: #050810; --card: rgba(8,11,18,0.9); --border: rgba(0,242,255,0.1); }
+        body { background: var(--bg); font-family: 'Space Grotesk', sans-serif; color: #fff; min-height: 100vh; display: flex; }
+
+        /* SIDEBAR */
+        .sidebar { width: 240px; min-height: 100vh; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; left:0; top:0; bottom:0; z-index:50; }
+        .sidebar-logo { padding: 24px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .logo-box { width:32px; height:32px; border:2px solid var(--cyan); border-radius:5px; transform:rotate(45deg); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .logo-r { transform:rotate(-45deg); font-weight:900; color:var(--cyan); font-size:14px; }
+        .logo-text { font-size:14px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+        .logo-text span { color:var(--cyan); }
+        .admin-badge { padding: 4px 10px; background: rgba(255,77,109,0.1); border: 1px solid rgba(255,77,109,0.25); border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--red); letter-spacing: .12em; margin: 12px 20px; display: block; text-align: center; }
+
+        .sidebar-nav { padding: 8px 0; flex: 1; }
+        .nav-section-label { padding: 10px 20px 6px; font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(255,255,255,0.25); letter-spacing:.14em; text-transform:uppercase; }
+        .nav-item { display:flex; align-items:center; gap:10px; padding:11px 20px; color:rgba(255,255,255,0.45); text-decoration:none; font-size:13px; font-weight:500; transition:all .2s; cursor:pointer; border:none; background:none; width:100%; text-align:left; }
+        .nav-item:hover { background:rgba(0,242,255,0.05); color:#fff; }
+        .nav-item.active { background:rgba(0,242,255,0.08); color:var(--cyan); border-right:2px solid var(--cyan); }
+        .nav-icon { font-size:15px; width:20px; }
+        .nav-badge { margin-left:auto; background:rgba(255,77,109,0.15); color:var(--red); border-radius:10px; padding:2px 7px; font-size:11px; font-family:'JetBrains Mono',monospace; }
+
+        .sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+        .logout-btn { display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px; background:rgba(255,77,109,0.08); border:1px solid rgba(255,77,109,0.2); border-radius:8px; color:var(--red); font-size:13px; font-weight:600; cursor:pointer; transition:all .2s; }
+        .logout-btn:hover { background:rgba(255,77,109,0.14); }
+
+        /* MAIN */
+        .main { margin-left:240px; flex:1; display:flex; flex-direction:column; min-height:100vh; }
+        .topbar { height:64px; padding:0 32px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:rgba(3,4,6,0.6); backdrop-filter:blur(12px); position:sticky; top:0; z-index:40; }
+        .topbar-title { font-size:16px; font-weight:600; }
+        .topbar-right { display:flex; align-items:center; gap:12px; }
+        .admin-tag { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--red); background:rgba(255,77,109,0.08); border:1px solid rgba(255,77,109,0.2); padding:4px 10px; border-radius:4px; letter-spacing:.1em; }
+
+        .content { padding:32px; flex:1; }
+        .panel { display:none; }
+        .panel.active { display:block; }
+
+        /* STAT CARDS */
+        .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+        .stat-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; }
+        .stat-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(255,255,255,0.35); letter-spacing:.12em; text-transform:uppercase; margin-bottom:10px; }
+        .stat-value { font-size:36px; font-weight:700; line-height:1; }
+        .stat-sub { font-size:12px; color:rgba(255,255,255,0.3); margin-top:6px; }
+
+        /* TABLE */
+        .section-card { background:var(--card); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:24px; }
+        .section-card-header { padding:18px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+        .section-card-header h3 { font-size:15px; font-weight:600; }
+        .section-card-body { padding:0; overflow-x:auto; }
+
+        .data-table { width:100%; border-collapse:collapse; min-width:700px; }
+        .data-table th { text-align:left; padding:12px 20px; font-family:'JetBrains Mono',monospace; font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:.1em; text-transform:uppercase; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.2); }
+        .data-table td { padding:14px 20px; font-size:13px; color:rgba(255,255,255,0.7); border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .data-table tr:last-child td { border-bottom:none; }
+        .data-table tr:hover td { background:rgba(0,242,255,0.02); }
+
+        .badge { display:inline-block; padding:3px 10px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+        .badge-active    { background:rgba(0,255,136,0.1);  color:#00ff88; border:1px solid rgba(0,255,136,0.2);  }
+        .badge-pending   { background:rgba(251,191,36,0.1); color:#fbbf24; border:1px solid rgba(251,191,36,0.2); }
+        .badge-suspended { background:rgba(255,77,109,0.1); color:#ff4d6d; border:1px solid rgba(255,77,109,0.2); }
+        .badge-admin     { background:rgba(255,77,109,0.1); color:#ff4d6d; border:1px solid rgba(255,77,109,0.2); }
+        .badge-client    { background:rgba(0,242,255,0.08); color:var(--cyan); border:1px solid rgba(0,242,255,0.2); }
+        .badge-open      { background:rgba(0,242,255,0.08); color:var(--cyan); border:1px solid rgba(0,242,255,0.2); }
+        .badge-closed    { background:rgba(0,255,136,0.08); color:#00ff88; border:1px solid rgba(0,255,136,0.2); }
+
+        /* ACTION BUTTONS */
+        .action-btn { padding:5px 12px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; transition:all .2s; font-family:'JetBrains Mono',monospace; letter-spacing:.06em; border:1px solid; }
+        .btn-activate   { background:rgba(0,255,136,0.08); color:#00ff88; border-color:rgba(0,255,136,0.2); }
+        .btn-activate:hover { background:rgba(0,255,136,0.18); }
+        .btn-suspend    { background:rgba(255,77,109,0.08); color:#ff4d6d; border-color:rgba(255,77,109,0.2); }
+        .btn-suspend:hover { background:rgba(255,77,109,0.18); }
+        .btn-view       { background:rgba(0,242,255,0.08); color:var(--cyan); border-color:rgba(0,242,255,0.2); }
+        .btn-view:hover { background:rgba(0,242,255,0.16); }
+        .btn-delete     { background:rgba(255,77,109,0.08); color:#ff4d6d; border-color:rgba(255,77,109,0.15); }
+        .btn-delete:hover { background:rgba(255,77,109,0.2); }
+        .actions-cell   { display:flex; gap:6px; }
+
+        /* SEARCH & FILTER */
+        .filter-row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+        .search-input { padding:9px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.09); border-radius:8px; color:#fff; font-family:'Space Grotesk',sans-serif; font-size:13px; outline:none; transition:border-color .2s; min-width:200px; }
+        .search-input:focus { border-color:var(--cyan); }
+        .filter-select { padding:9px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.09); border-radius:8px; color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; outline:none; cursor:pointer; }
+        .filter-select option { background:#0a0d14; }
+        .refresh-btn { padding:9px 16px; background:rgba(0,242,255,0.08); border:1px solid rgba(0,242,255,0.2); border-radius:8px; color:var(--cyan); font-size:12px; font-family:'JetBrains Mono',monospace; cursor:pointer; letter-spacing:.08em; transition:all .2s; }
+        .refresh-btn:hover { background:rgba(0,242,255,0.15); }
+
+        /* MODAL */
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center; padding:20px; }
+        .modal-overlay.open { display:flex; }
+        .modal { background:#080b12; border:1px solid var(--border); border-radius:14px; padding:32px; width:100%; max-width:480px; }
+        .modal h3 { font-size:17px; margin-bottom:20px; }
+        .modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+        .modal-field { display:flex; flex-direction:column; gap:6px; }
+        .modal-field.full { grid-column:1/-1; }
+        .modal-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--cyan); letter-spacing:.12em; text-transform:uppercase; }
+        .modal-value { font-size:13px; color:rgba(255,255,255,0.7); padding:10px 12px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:7px; }
+        .modal-footer { margin-top:24px; display:flex; gap:10px; justify-content:flex-end; }
+        .modal-close { padding:10px 20px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; font-size:13px; cursor:pointer; }
+
+        /* LOADING */
+        #loading-screen { position:fixed; inset:0; background:var(--bg); z-index:300; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+        .loader { width:36px; height:36px; border:3px solid rgba(255,77,109,0.15); border-top-color:var(--red); border-radius:50%; animation:spin .8s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .loader-text { font-family:'JetBrains Mono',monospace; font-size:11px; color:rgba(255,77,109,0.5); letter-spacing:.15em; }
+
+        .empty-state { text-align:center; padding:60px 20px; color:rgba(255,255,255,0.3); }
+        .empty-icon { font-size:40px; margin-bottom:12px; }
+    </style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="loading-screen">
+    <div class="loader"></div>
+    <div class="loader-text">Verifying admin access...</div>
+</div>
+
+<!-- User Detail Modal -->
+<div class="modal-overlay" id="user-modal">
+    <div class="modal">
+        <h3>User Details</h3>
+        <div class="modal-grid">
+            <div class="modal-field full"><div class="modal-label">Full Name</div><div class="modal-value" id="m-name"></div></div>
+            <div class="modal-field"><div class="modal-label">Username</div><div class="modal-value" id="m-username"></div></div>
+            <div class="modal-field"><div class="modal-label">Email</div><div class="modal-value" id="m-email"></div></div>
+            <div class="modal-field"><div class="modal-label">Company</div><div class="modal-value" id="m-company"></div></div>
+            <div class="modal-field"><div class="modal-label">Phone</div><div class="modal-value" id="m-phone"></div></div>
+            <div class="modal-field"><div class="modal-label">Service</div><div class="modal-value" id="m-service"></div></div>
+            <div class="modal-field"><div class="modal-label">Role</div><div class="modal-value" id="m-role"></div></div>
+            <div class="modal-field"><div class="modal-label">Status</div><div class="modal-value" id="m-status"></div></div>
+            <div class="modal-field full"><div class="modal-label">User ID</div><div class="modal-value" id="m-id" style="font-family:'JetBrains Mono',monospace;font-size:11px"></div></div>
+            <div class="modal-field full"><div class="modal-label">Registered</div><div class="modal-value" id="m-date"></div></div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-close" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-box"><span class="logo-r">R</span></div>
+        <span class="logo-text">Rynex<span>Admin</span></span>
+    </div>
+    <span class="admin-badge">ADMIN PANEL</span>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Dashboard</div>
+        <button class="nav-item active" onclick="showPanel('overview')"><span class="nav-icon">⊞</span>Overview</button>
+        <button class="nav-item" onclick="showPanel('users')"><span class="nav-icon">👥</span>All Users<span class="nav-badge" id="users-badge">0</span></button>
+        <button class="nav-item" onclick="showPanel('pending')"><span class="nav-icon">⏳</span>Pending<span class="nav-badge" id="pending-badge">0</span></button>
+        <button class="nav-item" onclick="showPanel('tickets')"><span class="nav-icon">🎫</span>Tickets<span class="nav-badge" id="tickets-badge">0</span></button>
+        <div class="nav-section-label" style="margin-top:8px">System</div>
+        <button class="nav-item" onclick="showPanel('settings')"><span class="nav-icon">⚙</span>Settings</button>
+    </nav>
+    <div class="sidebar-footer">
+        <button class="logout-btn" onclick="logout()"><span>⏏</span>Sign Out</button>
+    </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+    <header class="topbar">
+        <span class="topbar-title" id="panel-title">Overview</span>
+        <div class="topbar-right">
+            <span class="admin-tag">ADMIN</span>
+            <span id="admin-name" style="font-size:13px;color:rgba(255,255,255,0.5)">Loading...</span>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- OVERVIEW -->
+        <div class="panel active" id="panel-overview">
+            <div class="stats-row">
+                <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value" id="stat-total" style="color:var(--cyan)">—</div><div class="stat-sub">Registered accounts</div></div>
+                <div class="stat-card"><div class="stat-label">Active</div><div class="stat-value" id="stat-active" style="color:var(--green)">—</div><div class="stat-sub">Approved clients</div></div>
+                <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" id="stat-pending" style="color:var(--yellow)">—</div><div class="stat-sub">Awaiting approval</div></div>
+                <div class="stat-card"><div class="stat-label">Open Tickets</div><div class="stat-value" id="stat-tickets" style="color:var(--red)">—</div><div class="stat-sub">Needs attention</div></div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-card-header"><h3>Recent Registrations</h3></div>
+                <div class="section-card-body"><table class="data-table" id="recent-table">
+                    <thead><tr><th>Name</th><th>Email</th><th>Service</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                    <tbody id="recent-body"></tbody>
+                </table></div>
+            </div>
+        </div>
+
+        <!-- ALL USERS -->
+        <div class="panel" id="panel-users">
+            <div class="section-card">
+                <div class="section-card-header">
+                    <h3>All Users</h3>
+                    <div class="filter-row">
+                        <input class="search-input" type="text" id="user-search" placeholder="Search name or email..." oninput="filterUsers()">
+                        <select class="filter-select" id="status-filter" onchange="filterUsers()">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="pending">Pending</option>
+                            <option value="suspended">Suspended</option>
+                        </select>
+                        <select class="filter-select" id="service-filter" onchange="filterUsers()">
+                            <option value="">All Services</option>
+                            <option value="vapt">VAPT</option>
+                            <option value="soc">SOC</option>
+                            <option value="audit">Audit</option>
+                            <option value="threat">Threat</option>
+                            <option value="malware">Malware</option>
+                            <option value="incident">Incident</option>
+                        </select>
+                        <button class="refresh-btn" onclick="loadAllData()">↻ Refresh</button>
+                    </div>
+                </div>
+                <div class="section-card-body"><table class="data-table">
+                    <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Service</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+                    <tbody id="users-body"></tbody>
+                </table></div>
+            </div>
+        </div>
+
+        <!-- PENDING USERS -->
+        <div class="panel" id="panel-pending">
+            <div class="section-card">
+                <div class="section-card-header"><h3>Pending Approvals</h3><button class="refresh-btn" onclick="loadAllData()">↻ Refresh</button></div>
+                <div class="section-card-body"><table class="data-table">
+                    <thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Service</th><th>Registered</th><th>Actions</th></tr></thead>
+                    <tbody id="pending-body"></tbody>
+                </table></div>
+            </div>
+        </div>
+
+        <!-- TICKETS -->
+        <div class="panel" id="panel-tickets">
+            <div class="section-card">
+                <div class="section-card-header"><h3>Support Tickets</h3><button class="refresh-btn" onclick="loadAllData()">↻ Refresh</button></div>
+                <div class="section-card-body"><table class="data-table">
+                    <thead><tr><th>User</th><th>Subject</th><th>Priority</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+                    <tbody id="tickets-body"></tbody>
+                </table></div>
+            </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="panel" id="panel-settings">
+            <div class="section-card">
+                <div class="section-card-header"><h3>Admin Information</h3></div>
+                <div class="section-card-body" style="padding:24px">
+                    <table style="width:100%;border-collapse:collapse">
+                        <tr><td style="padding:12px 0;color:rgba(255,255,255,0.4);width:160px;font-size:13px">Admin Name</td><td id="s-name" style="font-size:13px">—</td></tr>
+                        <tr><td style="padding:12px 0;color:rgba(255,255,255,0.4);font-size:13px">Username</td><td id="s-username" style="font-size:13px">—</td></tr>
+                        <tr><td style="padding:12px 0;color:rgba(255,255,255,0.4);font-size:13px">Email</td><td id="s-email" style="font-size:13px">—</td></tr>
+                        <tr><td style="padding:12px 0;color:rgba(255,255,255,0.4);font-size:13px">Role</td><td><span class="badge badge-admin">ADMIN</span></td></tr>
+                    </table>
+                    <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+                        <p style="font-size:12px;color:rgba(255,255,255,0.3);font-family:'JetBrains Mono',monospace">
+                            To promote a user to admin: go to All Users → change their role directly in Supabase Table Editor.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(6,8,14,0.97);border:1px solid rgba(0,242,255,0.22);border-radius:9px;padding:12px 24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#fff;z-index:500;transition:transform .38s cubic-bezier(.34,1.56,.64,1);white-space:nowrap"></div>
+
+<script src="/_config.js"></script>
+<script>
+let adminProfile = null;
+let allUsers = [];
+let allTickets = [];
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.borderColor = type==='error' ? 'rgba(255,77,109,0.4)' : 'rgba(0,242,255,0.4)';
+    t.style.color = type==='error' ? '#ff4d6d' : '#00f2ff';
+    t.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(t._t);
+    t._t = setTimeout(() => { t.style.transform = 'translateX(-50%) translateY(80px)'; }, 3500);
+}
+
+function showPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    const titles = { overview:'Overview', users:'All Users', pending:'Pending Approvals', tickets:'Support Tickets', settings:'Settings' };
+    document.getElementById('panel-title').textContent = titles[name] || name;
+    document.querySelectorAll('.nav-item').forEach(b => {
+        if (b.getAttribute('onclick')?.includes("'"+name+"'")) b.classList.add('active');
+    });
+}
+
+function badgeHtml(type, val) {
+    const map = { active:'badge-active', pending:'badge-pending', suspended:'badge-suspended', admin:'badge-admin', client:'badge-client', open:'badge-open', closed:'badge-closed', 'in-progress':'badge-pending' };
+    return `<span class="badge ${map[val]||'badge-client'}">${val}</span>`;
+}
+
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—'; }
+
+function renderUsers(users, tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    if (!users.length) { tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">👥</div><p>No users found.</p></div></td></tr>`; return; }
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td>${u.full_name||'—'}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:11px">@${u.username||'—'}</td>
+            <td>${u.email||'—'}</td>
+            <td>${SERVICE_NAMES[u.service]||u.service||'—'}</td>
+            <td>${badgeHtml('role',u.role||'client')}</td>
+            <td>${badgeHtml('status',u.status||'pending')}</td>
+            <td style="font-size:12px;color:rgba(255,255,255,0.4)">${fmtDate(u.created_at)}</td>
+            <td><div class="actions-cell">
+                <button class="action-btn btn-view" onclick="viewUser('${u.id}')">View</button>
+                ${u.status==='active'
+                    ? `<button class="action-btn btn-suspend" onclick="setStatus('${u.id}','suspended')">Suspend</button>`
+                    : `<button class="action-btn btn-activate" onclick="setStatus('${u.id}','active')">Activate</button>`}
+            </div></td>
+        </tr>`).join('');
+}
+
+function renderPending(users) {
+    const tbody = document.getElementById('pending-body');
+    if (!users.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">✅</div><p>No pending users.</p></div></td></tr>`; return; }
+    tbody.innerHTML = users.map(u => `
+        <tr>
+            <td>${u.full_name||'—'}</td>
+            <td>${u.email||'—'}</td>
+            <td>${u.company||'—'}</td>
+            <td>${SERVICE_NAMES[u.service]||u.service||'—'}</td>
+            <td style="font-size:12px;color:rgba(255,255,255,0.4)">${fmtDate(u.created_at)}</td>
+            <td><div class="actions-cell">
+                <button class="action-btn btn-activate" onclick="setStatus('${u.id}','active')">Approve</button>
+                <button class="action-btn btn-suspend" onclick="setStatus('${u.id}','suspended')">Reject</button>
+                <button class="action-btn btn-view" onclick="viewUser('${u.id}')">View</button>
+            </div></td>
+        </tr>`).join('');
+}
+
+function renderTickets(tickets) {
+    const tbody = document.getElementById('tickets-body');
+    if (!tickets.length) { tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🎫</div><p>No tickets.</p></div></td></tr>`; return; }
+    tbody.innerHTML = tickets.map(t => {
+        const u = allUsers.find(u => u.id === t.user_id);
+        return `<tr>
+            <td style="font-size:12px">${u?.full_name||'Unknown'}<br><span style="color:rgba(255,255,255,0.3)">${u?.email||''}</span></td>
+            <td>${t.subject||'—'}</td>
+            <td>${badgeHtml('priority',t.priority||'medium')}</td>
+            <td>${badgeHtml('status',t.status||'open')}</td>
+            <td style="font-size:12px;color:rgba(255,255,255,0.4)">${fmtDate(t.created_at)}</td>
+            <td><div class="actions-cell">
+                ${t.status!=='closed'
+                    ? `<button class="action-btn btn-activate" onclick="closeTicket('${t.id}')">Close</button>`
+                    : `<span style="font-size:11px;color:rgba(255,255,255,0.3)">Closed</span>`}
+            </div></td>
+        </tr>`;
+    }).join('');
+}
+
+function filterUsers() {
+    const q   = document.getElementById('user-search').value.toLowerCase();
+    const st  = document.getElementById('status-filter').value;
+    const svc = document.getElementById('service-filter').value;
+    let filtered = allUsers.filter(u => {
+        const matchQ   = !q   || (u.full_name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q);
+        const matchSt  = !st  || u.status === st;
+        const matchSvc = !svc || u.service === svc;
+        return matchQ && matchSt && matchSvc;
+    });
+    renderUsers(filtered, 'users-body');
+}
+
+function viewUser(id) {
+    const u = allUsers.find(u => u.id === id);
+    if (!u) return;
+    document.getElementById('m-name').textContent    = u.full_name || '—';
+    document.getElementById('m-username').textContent= '@' + (u.username||'—');
+    document.getElementById('m-email').textContent   = u.email || '—';
+    document.getElementById('m-company').textContent = u.company || '—';
+    document.getElementById('m-phone').textContent   = u.phone || '—';
+    document.getElementById('m-service').textContent = SERVICE_NAMES[u.service]||u.service||'—';
+    document.getElementById('m-role').textContent    = u.role || '—';
+    document.getElementById('m-status').textContent  = u.status || '—';
+    document.getElementById('m-id').textContent      = u.id || '—';
+    document.getElementById('m-date').textContent    = fmtDate(u.created_at);
+    document.getElementById('user-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('user-modal').classList.remove('open'); }
+
+async function setStatus(id, status) {
+    if (!sb) { showToast('Supabase not connected.', 'error'); return; }
+    const { error } = await sb.from('profiles').update({ status }).eq('id', id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast(`User ${status === 'active' ? 'activated' : 'suspended'}.`, 'success');
+    await loadAllData();
+}
+
+async function closeTicket(id) {
+    if (!sb) { showToast('Supabase not connected.', 'error'); return; }
+    const { error } = await sb.from('tickets').update({ status: 'closed' }).eq('id', id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Ticket closed.', 'success');
+    await loadAllData();
+}
+
+async function loadAllData() {
+    if (!sb) return;
+    const { data: users }   = await sb.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data: tickets } = await sb.from('tickets').select('*').order('created_at', { ascending: false });
+    allUsers   = users   || [];
+    allTickets = tickets || [];
+
+    const pending   = allUsers.filter(u => u.status === 'pending');
+    const active    = allUsers.filter(u => u.status === 'active');
+    const openTkts  = allTickets.filter(t => t.status !== 'closed');
+
+    // Stats
+    document.getElementById('stat-total').textContent   = allUsers.length;
+    document.getElementById('stat-active').textContent  = active.length;
+    document.getElementById('stat-pending').textContent = pending.length;
+    document.getElementById('stat-tickets').textContent = openTkts.length;
+
+    // Badges
+    document.getElementById('users-badge').textContent   = allUsers.length;
+    document.getElementById('pending-badge').textContent = pending.length;
+    document.getElementById('tickets-badge').textContent = openTkts.length;
+
+    // Tables
+    renderUsers(allUsers.slice(0, 8), 'recent-body');
+    renderUsers(allUsers, 'users-body');
+    renderPending(pending);
+    renderTickets(allTickets);
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
+    history.replaceState(null, '', '/admin');
+    const auth = await requireAuth('admin');
+    if (!auth) return;
+    adminProfile = auth.profile;
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('admin-name').textContent = adminProfile.full_name || adminProfile.username || 'Admin';
+    document.getElementById('s-name').textContent     = adminProfile.full_name || '—';
+    document.getElementById('s-username').textContent = '@' + (adminProfile.username || '—');
+    document.getElementById('s-email').textContent    = adminProfile.email || '—';
+    await loadAllData();
+
+    // Close modal on overlay click
+    document.getElementById('user-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+});
+</script>
+</body>
+</html>

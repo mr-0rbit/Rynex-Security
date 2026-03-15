@@ -1,0 +1,23 @@
+{
+  "rewrites": [
+    { "source": "/",          "destination": "/index.html"     },
+    { "source": "/login",     "destination": "/auth.html"      },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/admin",     "destination": "/admin.html"     }
+  ],
+  "redirects": [
+    { "source": "/auth.html",      "permanent": true, "destination": "/login"     },
+    { "source": "/dashboard.html", "permanent": true, "destination": "/dashboard" },
+    { "source": "/admin.html",     "permanent": true, "destination": "/admin"     }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options",        "value": "DENY"            },
+        { "key": "X-Content-Type-Options", "value": "nosniff"         },
+        { "key": "Referrer-Policy",        "value": "no-referrer"     }
+      ]
+    }
+  ]
+}

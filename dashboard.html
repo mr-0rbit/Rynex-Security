@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rynex Security — Client Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --cyan: #00f2ff; --bg: #030406; --sidebar: #070a10; --card: rgba(8,11,18,0.9); --border: rgba(0,242,255,0.1); }
+        body { background: var(--bg); font-family: 'Space Grotesk', sans-serif; color: #fff; min-height: 100vh; display: flex; }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 240px; min-height: 100vh; background: var(--sidebar);
+            border-right: 1px solid var(--border); display: flex; flex-direction: column;
+            position: fixed; left: 0; top: 0; bottom: 0; z-index: 50;
+        }
+        .sidebar-logo {
+            padding: 24px 20px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .logo-box { width: 32px; height: 32px; border: 2px solid var(--cyan); border-radius: 5px; transform: rotate(45deg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .logo-r { transform: rotate(-45deg); font-weight: 900; color: var(--cyan); font-size: 14px; }
+        .logo-text { font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+        .logo-text span { color: var(--cyan); }
+
+        .sidebar-user {
+            padding: 20px; border-bottom: 1px solid var(--border);
+        }
+        .user-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(0,242,255,0.12); border: 1px solid rgba(0,242,255,0.25);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; color: var(--cyan); font-size: 16px; margin-bottom: 10px;
+        }
+        .user-name { font-size: 14px; font-weight: 600; }
+        .user-role {
+            display: inline-block; margin-top: 4px; padding: 3px 8px;
+            background: rgba(0,242,255,0.08); border: 1px solid rgba(0,242,255,0.2);
+            border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+            font-size: 10px; color: var(--cyan); letter-spacing: .1em; text-transform: uppercase;
+        }
+        .user-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 4px; }
+
+        .sidebar-nav { padding: 16px 0; flex: 1; }
+        .nav-section-label {
+            padding: 8px 20px; font-family: 'JetBrains Mono', monospace;
+            font-size: 10px; color: rgba(255,255,255,0.25); letter-spacing: .14em; text-transform: uppercase;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 11px 20px; color: rgba(255,255,255,0.45);
+            text-decoration: none; font-size: 13px; font-weight: 500;
+            transition: all .2s; cursor: pointer; border: none; background: none; width: 100%; text-align: left;
+        }
+        .nav-item:hover { background: rgba(0,242,255,0.05); color: #fff; }
+        .nav-item.active { background: rgba(0,242,255,0.08); color: var(--cyan); border-right: 2px solid var(--cyan); }
+        .nav-item .nav-icon { font-size: 15px; width: 20px; }
+
+        .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+        .logout-btn {
+            display: flex; align-items: center; gap: 10px;
+            width: 100%; padding: 10px 12px; background: rgba(255,77,109,0.08);
+            border: 1px solid rgba(255,77,109,0.2); border-radius: 8px;
+            color: #ff4d6d; font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all .2s;
+        }
+        .logout-btn:hover { background: rgba(255,77,109,0.14); }
+
+        /* MAIN CONTENT */
+        .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+        .topbar {
+            height: 64px; padding: 0 32px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(3,4,6,0.6); backdrop-filter: blur(12px);
+            position: sticky; top: 0; z-index: 40;
+        }
+        .topbar-title { font-size: 16px; font-weight: 600; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .status-dot { width: 8px; height: 8px; background: #00ff88; border-radius: 50%; animation: pulse-dot 2s infinite; }
+        @keyframes pulse-dot { 50% { opacity: .4; } }
+        .status-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.4); }
+
+        .content { padding: 32px; flex: 1; }
+
+        /* PANELS */
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* WELCOME BANNER */
+        .welcome-banner {
+            background: var(--card); border: 1px solid rgba(0,242,255,0.12);
+            border-radius: 14px; padding: 28px 32px; margin-bottom: 28px;
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+        }
+        .welcome-text h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+        .welcome-text h2 span { color: var(--cyan); }
+        .welcome-text p { font-size: 13px; color: rgba(255,255,255,0.45); }
+        .service-badge {
+            padding: 10px 20px; background: rgba(0,242,255,0.1);
+            border: 1px solid rgba(0,242,255,0.25); border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--cyan); letter-spacing: .08em;
+        }
+
+        /* CARDS GRID */
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .stat-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 24px;
+        }
+        .stat-card-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.35); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; }
+        .stat-card-value { font-size: 32px; font-weight: 700; color: var(--cyan); line-height: 1; }
+        .stat-card-sub { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 6px; }
+
+        /* ACTIVITY TABLE */
+        .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 24px; }
+        .section-card-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .section-card-header h3 { font-size: 15px; font-weight: 600; }
+        .section-card-body { padding: 24px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 10px 16px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: .1em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+        td { padding: 14px 16px; font-size: 13px; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.04); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(0,242,255,0.02); }
+
+        .badge {
+            display: inline-block; padding: 3px 10px; border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+        }
+        .badge-success { background: rgba(0,255,136,0.1); color: #00ff88; border: 1px solid rgba(0,255,136,0.2); }
+        .badge-warning { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+        .badge-danger  { background: rgba(255,77,109,0.1); color: #ff4d6d; border: 1px solid rgba(255,77,109,0.2); }
+        .badge-info    { background: rgba(0,242,255,0.1); color: var(--cyan); border: 1px solid rgba(0,242,255,0.2); }
+
+        /* PROFILE FORM */
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--cyan); letter-spacing: .12em; text-transform: uppercase; }
+        .form-input {
+            padding: 12px 14px; background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.09); border-radius: 9px;
+            color: #fff; font-family: 'Space Grotesk', sans-serif; font-size: 14px;
+            transition: border-color .2s; outline: none;
+        }
+        .form-input:focus { border-color: var(--cyan); }
+        .form-input:disabled { opacity: .5; cursor: not-allowed; }
+        .save-btn {
+            margin-top: 8px; padding: 12px 28px; background: var(--cyan); color: #000;
+            border: none; border-radius: 8px; font-family: 'Space Grotesk', sans-serif;
+            font-size: 13px; font-weight: 700; letter-spacing: .08em; cursor: pointer; transition: background .2s;
+        }
+        .save-btn:hover { background: #fff; }
+
+        /* TICKET FORM */
+        .ticket-form { display: flex; flex-direction: column; gap: 16px; }
+        textarea.form-input { min-height: 120px; resize: vertical; }
+
+        /* EMPTY STATE */
+        .empty-state { text-align: center; padding: 60px 20px; color: rgba(255,255,255,0.3); }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 16px; margin-bottom: 8px; color: rgba(255,255,255,0.5); }
+        .empty-state p { font-size: 13px; }
+
+        /* Loading */
+        #loading-screen {
+            position: fixed; inset: 0; background: var(--bg); z-index: 200;
+            display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+        }
+        .loader { width: 36px; height: 36px; border: 3px solid rgba(0,242,255,0.15); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loader-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: rgba(0,242,255,0.5); letter-spacing: .15em; }
+    </style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+    <div class="loader"></div>
+    <div class="loader-text">Verifying session...</div>
+</div>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="logo-box"><span class="logo-r">R</span></div>
+        <span class="logo-text">Rynex<span>Sec</span></span>
+    </div>
+    <div class="sidebar-user">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-name" id="user-name">Loading...</div>
+        <div class="user-role" id="user-service">—</div>
+        <div class="user-id" id="user-id-display">ID: —</div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Main</div>
+        <button class="nav-item active" onclick="showPanel('overview')">
+            <span class="nav-icon">⊞</span> Overview
+        </button>
+        <button class="nav-item" onclick="showPanel('reports')">
+            <span class="nav-icon">📄</span> Reports
+        </button>
+        <button class="nav-item" onclick="showPanel('tickets')">
+            <span class="nav-icon">🎫</span> Support Tickets
+        </button>
+        <div class="nav-section-label" style="margin-top:8px">Account</div>
+        <button class="nav-item" onclick="showPanel('profile')">
+            <span class="nav-icon">👤</span> My Profile
+        </button>
+        <button class="nav-item" onclick="showPanel('security')">
+            <span class="nav-icon">🔒</span> Security
+        </button>
+    </nav>
+    <div class="sidebar-footer">
+        <button class="logout-btn" onclick="logout()">
+            <span>⏏</span> Sign Out
+        </button>
+    </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+    <header class="topbar">
+        <span class="topbar-title" id="panel-title">Overview</span>
+        <div class="topbar-right">
+            <div class="status-dot"></div>
+            <span class="status-text">SESSION ACTIVE</span>
+        </div>
+    </header>
+
+    <div class="content">
+
+        <!-- OVERVIEW PANEL -->
+        <div class="panel active" id="panel-overview">
+            <div class="welcome-banner">
+                <div class="welcome-text">
+                    <h2>Welcome back, <span id="welcome-name">—</span></h2>
+                    <p>Here is your security dashboard overview.</p>
+                </div>
+                <div class="service-badge" id="service-badge">— Service</div>
+            </div>
+
+            <div class="cards-grid">
+                <div class="stat-card">
+                    <div class="stat-card-label">Account Status</div>
+                    <div class="stat-card-value" id="status-value" style="font-size:18px;margin-top:4px">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-label">Service</div>
+                    <div class="stat-card-value" id="service-value" style="font-size:18px;margin-top:4px">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-label">Open Tickets</div>
+                    <div class="stat-card-value" id="tickets-count">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-label">Member Since</div>
+                    <div class="stat-card-value" id="member-since" style="font-size:16px;margin-top:4px">—</div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-card-header">
+                    <h3>Account Information</h3>
+                </div>
+                <div class="section-card-body">
+                    <table>
+                        <tbody>
+                            <tr><td style="color:rgba(255,255,255,0.4);width:160px">Full Name</td><td id="info-name">—</td></tr>
+                            <tr><td style="color:rgba(255,255,255,0.4)">Username</td><td id="info-username">—</td></tr>
+                            <tr><td style="color:rgba(255,255,255,0.4)">Email</td><td id="info-email">—</td></tr>
+                            <tr><td style="color:rgba(255,255,255,0.4)">Company</td><td id="info-company">—</td></tr>
+                            <tr><td style="color:rgba(255,255,255,0.4)">Phone</td><td id="info-phone">—</td></tr>
+                            <tr><td style="color:rgba(255,255,255,0.4)">User ID</td><td id="info-id" style="font-family:'JetBrains Mono',monospace;font-size:12px">—</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- REPORTS PANEL -->
+        <div class="panel" id="panel-reports">
+            <div class="section-card">
+                <div class="section-card-header"><h3>Security Reports</h3></div>
+                <div class="section-card-body">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📄</div>
+                        <h3>No Reports Yet</h3>
+                        <p>Your security reports will appear here once our team completes your assessments.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TICKETS PANEL -->
+        <div class="panel" id="panel-tickets">
+            <div class="section-card" style="margin-bottom:24px">
+                <div class="section-card-header"><h3>Submit a Ticket</h3></div>
+                <div class="section-card-body">
+                    <div class="ticket-form">
+                        <div class="form-group">
+                            <label class="form-label">Subject</label>
+                            <input class="form-input" type="text" id="ticket-subject" placeholder="Describe your issue briefly">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Priority</label>
+                            <select class="form-input" id="ticket-priority">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-input" id="ticket-message" placeholder="Provide full details about your request or issue..."></textarea>
+                        </div>
+                        <button class="save-btn" onclick="submitTicket()">Submit Ticket</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="section-card-header"><h3>My Tickets</h3></div>
+                <div class="section-card-body" id="tickets-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎫</div>
+                        <h3>No Tickets Yet</h3>
+                        <p>Submit a ticket above to get support from our team.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROFILE PANEL -->
+        <div class="panel" id="panel-profile">
+            <div class="section-card">
+                <div class="section-card-header"><h3>Edit Profile</h3></div>
+                <div class="section-card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">Full Name</label>
+                            <input class="form-input" type="text" id="edit-name">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Username</label>
+                            <input class="form-input" type="text" id="edit-username" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email</label>
+                            <input class="form-input" type="email" id="edit-email" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone</label>
+                            <input class="form-input" type="tel" id="edit-phone">
+                        </div>
+                        <div class="form-group full">
+                            <label class="form-label">Company</label>
+                            <input class="form-input" type="text" id="edit-company">
+                        </div>
+                    </div>
+                    <button class="save-btn" style="margin-top:24px" onclick="saveProfile()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECURITY PANEL -->
+        <div class="panel" id="panel-security">
+            <div class="section-card">
+                <div class="section-card-header"><h3>Security Settings</h3></div>
+                <div class="section-card-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label">New Password</label>
+                            <input class="form-input" type="password" id="new-pass" placeholder="••••••••">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Confirm Password</label>
+                            <input class="form-input" type="password" id="confirm-pass" placeholder="••••••••">
+                        </div>
+                    </div>
+                    <button class="save-btn" style="margin-top:24px" onclick="changePassword()">Update Password</button>
+
+                    <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border)">
+                        <h4 style="margin-bottom:8px;color:rgba(255,255,255,0.6);font-size:13px">Session Info</h4>
+                        <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(255,255,255,0.3)" id="session-info">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end content -->
+</main>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(6,8,14,0.97);border:1px solid rgba(0,242,255,0.22);border-radius:9px;padding:12px 24px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#fff;z-index:999;transition:transform .38s cubic-bezier(.34,1.56,.64,1);white-space:nowrap"></div>
+
+<script src="/_config.js"></script>
+<script>
+let currentUser = null;
+let currentProfile = null;
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.borderColor = type === 'error' ? 'rgba(255,77,109,0.4)' : 'rgba(0,242,255,0.4)';
+    t.style.color       = type === 'error' ? '#ff4d6d' : '#00f2ff';
+    t.style.transform   = 'translateX(-50%) translateY(0)';
+    clearTimeout(t._t);
+    t._t = setTimeout(() => { t.style.transform = 'translateX(-50%) translateY(80px)'; }, 3500);
+}
+
+function showPanel(name) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    document.getElementById('panel-title').textContent =
+        { overview:'Overview', reports:'Reports', tickets:'Support Tickets', profile:'My Profile', security:'Security Settings' }[name];
+    // Highlight correct nav button
+    document.querySelectorAll('.nav-item').forEach(b => {
+        if (b.getAttribute('onclick')?.includes(name)) b.classList.add('active');
+    });
+}
+
+async function loadProfile(profile) {
+    const svcName = SERVICE_NAMES[profile.service] || profile.service || 'Not Set';
+    const initials = (profile.full_name || 'U').split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2);
+    const sinceDate = profile.created_at ? new Date(profile.created_at).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : '—';
+
+    // Sidebar
+    document.getElementById('user-avatar').textContent   = initials;
+    document.getElementById('user-name').textContent     = profile.full_name || 'User';
+    document.getElementById('user-service').textContent  = svcName;
+    document.getElementById('user-id-display').textContent = 'ID: ' + (profile.id || '').slice(0,8).toUpperCase();
+
+    // Welcome
+    document.getElementById('welcome-name').textContent  = (profile.full_name || 'User').split(' ')[0];
+    document.getElementById('service-badge').textContent = svcName;
+
+    // Cards
+    const statusColors = { active:'#00ff88', pending:'#fbbf24', suspended:'#ff4d6d' };
+    const sv = document.getElementById('status-value');
+    sv.textContent  = (profile.status || 'pending').toUpperCase();
+    sv.style.color  = statusColors[profile.status] || '#fbbf24';
+    document.getElementById('service-value').textContent  = svcName;
+    document.getElementById('member-since').textContent   = sinceDate;
+
+    // Info table
+    document.getElementById('info-name').textContent     = profile.full_name || '—';
+    document.getElementById('info-username').textContent = '@' + (profile.username || '—');
+    document.getElementById('info-email').textContent    = profile.email || '—';
+    document.getElementById('info-company').textContent  = profile.company || '—';
+    document.getElementById('info-phone').textContent    = profile.phone || '—';
+    document.getElementById('info-id').textContent       = profile.id || '—';
+
+    // Profile edit form
+    document.getElementById('edit-name').value     = profile.full_name || '';
+    document.getElementById('edit-username').value = profile.username  || '';
+    document.getElementById('edit-email').value    = profile.email     || '';
+    document.getElementById('edit-phone').value    = profile.phone     || '';
+    document.getElementById('edit-company').value  = profile.company   || '';
+
+    // Load tickets count
+    if (sb) {
+        const { data: tickets } = await sb.from('tickets').select('id, status').eq('user_id', profile.id);
+        if (tickets) {
+            const open = tickets.filter(t => t.status !== 'closed').length;
+            document.getElementById('tickets-count').textContent = open;
+            renderTickets(tickets);
+        }
+    }
+
+    // Session info
+    document.getElementById('session-info').textContent = 'Logged in as ' + profile.email;
+}
+
+function renderTickets(tickets) {
+    const container = document.getElementById('tickets-list');
+    if (!tickets || tickets.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🎫</div><h3>No Tickets Yet</h3><p>Submit a ticket above to get support.</p></div>`;
+        return;
+    }
+    const badgeClass = { open:'badge-info', 'in-progress':'badge-warning', closed:'badge-success', critical:'badge-danger' };
+    container.innerHTML = `
+        <table>
+            <thead><tr><th>Subject</th><th>Priority</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody>
+                ${tickets.map(t => `
+                    <tr>
+                        <td>${t.subject || '—'}</td>
+                        <td><span class="badge ${badgeClass[t.priority] || 'badge-info'}">${t.priority || 'medium'}</span></td>
+                        <td><span class="badge ${badgeClass[t.status] || 'badge-info'}">${t.status || 'open'}</span></td>
+                        <td>${t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}</td>
+                    </tr>`).join('')}
+            </tbody>
+        </table>`;
+}
+
+async function submitTicket() {
+    const subject  = document.getElementById('ticket-subject').value.trim();
+    const message  = document.getElementById('ticket-message').value.trim();
+    const priority = document.getElementById('ticket-priority').value;
+    if (!subject || !message) { showToast('Please fill in subject and message.', 'error'); return; }
+    if (!sb) { showToast('Supabase not connected.', 'error'); return; }
+    const { error } = await sb.from('tickets').insert({
+        user_id: currentProfile.id, subject, message, priority, status: 'open'
+    });
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    document.getElementById('ticket-subject').value = '';
+    document.getElementById('ticket-message').value = '';
+    showToast('Ticket submitted successfully!', 'success');
+    loadProfile(currentProfile);
+}
+
+async function saveProfile() {
+    if (!sb) { showToast('Supabase not connected.', 'error'); return; }
+    const { error } = await sb.from('profiles').update({
+        full_name: document.getElementById('edit-name').value.trim(),
+        phone:     document.getElementById('edit-phone').value.trim(),
+        company:   document.getElementById('edit-company').value.trim()
+    }).eq('id', currentProfile.id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Profile updated!', 'success');
+    currentProfile = await getProfile(currentProfile.id);
+    loadProfile(currentProfile);
+}
+
+async function changePassword() {
+    const np = document.getElementById('new-pass').value;
+    const cp = document.getElementById('confirm-pass').value;
+    if (!np || np.length < 8) { showToast('Password must be at least 8 characters.', 'error'); return; }
+    if (np !== cp) { showToast('Passwords do not match.', 'error'); return; }
+    if (!sb) { showToast('Supabase not connected.', 'error'); return; }
+    const { error } = await sb.auth.updateUser({ password: np });
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Password updated successfully!', 'success');
+    document.getElementById('new-pass').value = '';
+    document.getElementById('confirm-pass').value = '';
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
+    history.replaceState(null, '', '/dashboard');
+    const auth = await requireAuth('client');
+    if (!auth) return;
+    currentUser    = auth.session.user;
+    currentProfile = auth.profile;
+    document.getElementById('loading-screen').style.display = 'none';
+    await loadProfile(currentProfile);
+});
+</script>
+</body>
+</html>
